@@ -12,7 +12,8 @@
 *   **Quiet Time Selection**: Automatic selection of quietest days based on Kp (sum/max) or Dst (min) geomagnetic indices.
 *   **Geospacial Tools**:
     *   Region-based filtering (presets for Africa, Europe, Polar Caps, etc.).
-    *   Solar Local Time (SLT) calculation.
+    *   **Magnetic Local Time (MLT)** and Solar Local Time (SLT) calculation.
+    *   **Altitude-Adjusted Corrected Geomagnetic (AACGM)** coordinates (mlat, mlon).
     *   Hemisphere separation.
 *   **Gridding**: Fast aggregation of point data into regular 2D (Lat/Lon) or 3D (Lat/Lon/LT) grids using vectorization.
 *   **Interhemispheric Analysis (IHFAC)**: Tools to compare Northern and Southern hemisphere currents (Difference, Ratio) with automatic coordinate alignment.
@@ -61,10 +62,10 @@ quiet_dates = quiet.quiet_days(
 # Filter dataframe
 df = df.filter(pl.col("timestamp").dt.date().is_in(quiet_dates))
 
-# 3. Filter Region & Add Local Time
-# Focus on Africa and calculate Solar Local Time
+# 3. Filter Region & Add Magnetic Local Time
+# Focus on Africa and calculate Magnetic Local Time (MLT)
 df_africa = geo.filter_region(df, region="africa")
-df_africa = geo.add_local_time(df_africa)
+df_africa = geo.add_local_time(df_africa, method="mlt")
 
 # 4. Grid the Data
 # Create a 2°x2° grid of Mean FAC values
@@ -87,7 +88,7 @@ plot.fac_map(
 
 ### `facpy.io`
 Handles file I/O.
-*   `load_swarm_fac()`: Reads data, handles fill values, and normalizes column names.
+*   `load_swarm_fac()`: Reads data, handles fill values, normalizes column names, and **automatically appends magnetic coordinates (mlat, mlon, mlt)** using `aacgmv2`.
 
 ### `facpy.quiet`
 Geomagnetic activity selection.
@@ -96,7 +97,7 @@ Geomagnetic activity selection.
 ### `facpy.geo`
 Coordinate and spatial tools.
 *   `filter_region()`: Spatial subsetting.
-*   `add_local_time()`: Computes SLT from UTC and Longitude.
+*   `add_local_time()`: Computes SLT or **MLT** (using `aacgmv2`) from satellite coordinates and timestamp.
 
 ### `facpy.grid`
 Aggregation logic.
