@@ -1,6 +1,7 @@
 # facpy: Field-Aligned Current Python Toolkit
 
-[![PyPI version](https://badge.fury.io/py/facpy.svg)](https://badge.fury.io/py/facpy)
+[![PyPI version](https://badge.fury.io/py/facpy.svg)](https://pypi.org/project/facpy/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/facpy.svg)](https://pypi.org/project/facpy/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **facpy** is a research-grade Python package designed for standardized, fast, and reproducible analysis of Swarm satellite Field-Aligned Currents (FAC). It is optimized for quiet-time studies, regional analysis (e.g., Africa), and interhemispheric comparisons.
