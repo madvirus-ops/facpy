@@ -1,0 +1,16 @@
+numpy
+pandas
+polars
+xarray
+netCDF4
+cdflib
+cartopy
+matplotlib
+scipy
+
+[dev]
+pytest
+black
+isort
+flake8
+mypy

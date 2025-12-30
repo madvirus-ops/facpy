@@ -1,0 +1,55 @@
+Metadata-Version: 2.4
+Name: facpy
+Version: 0.1.0
+Summary: Field-Aligned Current Python toolkit for SWARM satellite analysis
+Author-email: Edwin Ayabie <edwinayabie@example.com>
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: polars
+Requires-Dist: xarray
+Requires-Dist: netCDF4
+Requires-Dist: cdflib
+Requires-Dist: cartopy
+Requires-Dist: matplotlib
+Requires-Dist: scipy
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+
+# facpy: Field-Aligned Current Python Toolkit
+
+**facpy** is a Python package designed for standardized, fast, and reproducible analysis of Swarm satellite Field-Aligned Currents (FAC). It is optimized for quiet-time studies and regional analysis (e.g., Africa).
+
+## Features
+- Load SWARM FAC data (CDF / NetCDF) into Polars/Pandas DataFrames.
+- Filter data spatially (lat, lon, region, hemisphere).
+- Select quietest days using Kp/Dst indices.
+- Aggregate FAC into 2°×2° grids with local time binning.
+- Perform Interhemispheric FAC (IHFAC) analysis.
+- Generate publication-quality maps using Cartopy/PyGMT.
+
+## Installation
+
+```bash
+pip install .
+```
+
+## Quick Start
+
+```python
+import facpy
+
+# Load data
+df = facpy.io.load_swarm_fac(satellite="A", year=2021)
+
+# Usage examples to be added...
+```
