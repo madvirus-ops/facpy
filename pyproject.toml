@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "facpy"
-version = "0.1.2"
+version = "0.1.3"
 description = "Field-Aligned Current Python toolkit for SWARM satellite analysis"
 readme = "README.md"
 authors = [
