@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 import xarray as xr
+import aacgmv2
 
 
 def load_swarm_fac(
@@ -20,6 +21,7 @@ def load_swarm_fac(
     satellite: Optional[Literal["A", "B", "C"]] = None,
     return_type: Literal["polars", "pandas"] = "polars",
     clean_columns: bool = True,
+    add_magnetic: bool = True,
 ) -> Union[pl.DataFrame, pd.DataFrame]:
     """
     Load Swarm FAC data from one or multiple CDF/NetCDF files.
@@ -35,11 +37,14 @@ def load_swarm_fac(
         The desired return DataFrame type.
     clean_columns : bool, default True
         If True, drops invalid measurements (e.g. fill values) and standardizes column names.
+    add_magnetic : bool, default True
+        If True, computes and appends magnetic coordinates (mlat, mlon, mlt) using aacgmv2.
 
     Returns
     -------
     pl.DataFrame or pd.DataFrame
-        The loaded data.
+        The loaded data. Columns include 'timestamp', 'latitude', 'longitude', 'radius', 'fac',
+        and optionally 'mlat', 'mlon', 'mlt'.
     """
     if isinstance(file_path, (str, Path)):
         if os.path.isdir(file_path):
@@ -80,6 +85,9 @@ def load_swarm_fac(
 
     if clean_columns:
         final_df = _clean_data(final_df)
+
+    if add_magnetic:
+        final_df = _add_magnetic_coords(final_df)
 
     if return_type == "pandas":
         return final_df.to_pandas()
@@ -193,3 +201,51 @@ def _clean_data(df: pl.DataFrame) -> pl.DataFrame:
     df = df.sort("timestamp")
     
     return df
+
+
+def _add_magnetic_coords(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Compute Altitude-Adjusted Corrected Geomagnetic (AACGM) coordinates.
+    Appends 'mlat', 'mlon', and 'mlt' columns to the Polars DataFrame.
+    """
+    if df.height == 0:
+        return df.with_columns([
+            pl.lit(None).cast(pl.Float64).alias("mlat"),
+            pl.lit(None).cast(pl.Float64).alias("mlon"),
+            pl.lit(None).cast(pl.Float64).alias("mlt"),
+        ])
+
+    # AACGMv2 get_aacgm_coord takes (lat, lon, height, datetime)
+    # Swarm 'radius' is in meters from Earth's center. 
+    # AACGMv2 expects 'height' in km above surface (approx Re = 6371.2 km)
+    
+    # We'll use a conversion: height = (radius / 1000) - 6371.2
+    # Note: Swarm Radius is usually around 6800 km.
+    
+    def compute_row(row):
+        # row: (timestamp, lat, lon, radius)
+        dt = row[0]
+        lat = row[1]
+        lon = row[2]
+        h_km = (row[3] / 1000.0) - 6371.2
+        
+        try:
+            mlat, mlon, mlt = aacgmv2.get_aacgm_coord(lat, lon, h_km, dt)
+            return mlat, mlon, mlt
+        except Exception:
+            return None, None, None
+
+    # For Polars, apply is often better if we have many rows, 
+    # but aacgmv2 is a C-wrapper, so we might need to loop or use map_rows.
+    # map_rows is generally preferred for row-wise python functions.
+    
+    coords = df.select(["timestamp", "latitude", "longitude", "radius"]).map_rows(compute_row)
+    
+    # coords is a DataFrame with 3 columns (column_0, column_1, column_2)
+    new_cols = coords.rename({
+        "column_0": "mlat",
+        "column_1": "mlon",
+        "column_2": "mlt"
+    })
+    
+    return pl.concat([df, new_cols], how="horizontal")

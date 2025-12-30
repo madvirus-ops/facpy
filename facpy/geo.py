@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import polars as pl
+import aacgmv2
 
 # Predefined regions (min_lon, max_lon, min_lat, max_lat)
 REGIONS = {
@@ -111,7 +112,7 @@ def add_local_time(df: pl.DataFrame, method: str = "slt") -> pl.DataFrame:
     if method == "slt":
         return _calculate_slt(df)
     elif method == "mlt":
-        raise NotImplementedError("MLT calculation requires 'aacgmv2' or 'apexpy' which are not standard dependencies. Please use 'slt' or implement MLT locally.")
+        return _calculate_mlt(df)
     else:
         raise ValueError(f"Unknown method {method}")
 
@@ -144,3 +145,34 @@ def _calculate_slt(df: pl.DataFrame) -> pl.DataFrame:
     slt = (slt % 24.0)
     
     return df.with_columns(slt.alias("local_time"))
+
+
+def _calculate_mlt(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Calculate Magnetic Local Time (MLT) using aacgmv2.
+    """
+    # Check for required columns
+    required = ["timestamp", "latitude", "longitude", "radius"]
+    for col in required:
+        if col not in df.columns:
+             raise ValueError(f"MLT calculation requires '{col}' column.")
+
+    if df.height == 0:
+        return df.with_columns(pl.lit(None).cast(pl.Float64).alias("local_time"))
+
+    def compute_mlt_row(row):
+        # row: (timestamp, lat, lon, radius)
+        dt = row[0]
+        lat = row[1]
+        lon = row[2]
+        h_km = (row[3] / 1000.0) - 6371.2
+        
+        try:
+            _, _, mlt = aacgmv2.get_aacgm_coord(lat, lon, h_km, dt)
+            return mlt
+        except Exception:
+            return None
+
+    mlt_values = df.select(required).map_rows(compute_mlt_row)
+    
+    return df.with_columns(mlt_values.select(pl.all().alias("local_time")))

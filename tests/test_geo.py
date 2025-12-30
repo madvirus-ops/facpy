@@ -2,6 +2,7 @@
 import pytest
 import polars as pl
 from datetime import datetime
+from unittest.mock import patch
 from facpy.geo import filter_region, add_local_time, REGIONS
 
 @pytest.fixture
@@ -83,3 +84,24 @@ def test_filter_bbox_crossing(geo_df):
     assert 179 in lons
     assert -179 in lons
     assert 0 not in lons
+
+def test_add_local_time_mlt(geo_df):
+    # mlt requires 'radius'
+    df = geo_df.with_columns(pl.lit(6800000.0).alias("radius"))
+    
+    with patch("facpy.geo.aacgmv2.get_aacgm_coord") as mock_get:
+        mock_get.return_value = (65.0, 80.0, 13.5)
+        
+        lt_df = add_local_time(df, method="mlt")
+        
+        assert "local_time" in lt_df.columns
+        assert lt_df["local_time"][0] == 13.5
+        
+        # Verify call (Point 1: 5.0 lat, 0.0 lon, 6800km radius, 12:00 timestamp)
+        # h_km = 6800 - 6371.2 = 428.8
+        mock_get.assert_any_call(5.0, 0.0, pytest.approx(428.8), datetime(2021, 1, 1, 12, 0))
+
+def test_add_local_time_mlt_missing_cols(geo_df):
+    # missing 'radius'
+    with pytest.raises(ValueError, match="MLT calculation requires 'radius' column."):
+        add_local_time(geo_df, method="mlt")
