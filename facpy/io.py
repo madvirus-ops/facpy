@@ -15,7 +15,10 @@ import polars as pl
 import xarray as xr
 import aacgmv2
 import datetime
-from viresclient import SwarmRequest
+try:
+    from viresclient import SwarmRequest
+except ImportError:
+    SwarmRequest = None
 
 
 def load_swarm_fac(
@@ -98,9 +101,9 @@ def load_swarm_fac(
 
 
 def fetch_swarm_fac(
-    start_time: Union[str, datetime.datetime.datetime],
-    end_time: Union[str, datetime.datetime.datetime],
-    satellite: Literal["A", "B", "C"] = "AC",
+    start_time: Union[str, datetime.datetime],
+    end_time: Union[str, datetime.datetime],
+    satellite: Literal["A", "B", "C"] = "A",
     auxiliaries: Optional[List[str]] = None,
     return_type: Literal["polars", "pandas"] = "polars",
     clean_columns: bool = True,
@@ -131,6 +134,12 @@ def fetch_swarm_fac(
     pl.DataFrame or pd.DataFrame
         The fetched data.
     """
+    if SwarmRequest is None:
+        raise ImportError(
+            "viresclient is required for fetch_swarm_fac. "
+            "Install it with: pip install viresclient"
+        )
+
     request = SwarmRequest()
     request.set_collection(f"SW_OPER_FAC{satellite}TMS_2F")
     

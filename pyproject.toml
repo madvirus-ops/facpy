@@ -31,6 +31,7 @@ dependencies = [
     "scipy",
     "aacgmv2",
     "viresclient",
+    "pyarrow",
 ]
 
 [project.urls]
