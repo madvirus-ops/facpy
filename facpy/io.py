@@ -14,6 +14,8 @@ import pandas as pd
 import polars as pl
 import xarray as xr
 import aacgmv2
+import datetime
+from viresclient import SwarmRequest
 
 
 def load_swarm_fac(
@@ -93,6 +95,114 @@ def load_swarm_fac(
         return final_df.to_pandas()
     
     return final_df
+
+
+def fetch_swarm_fac(
+    start_time: Union[str, datetime.datetime.datetime],
+    end_time: Union[str, datetime.datetime.datetime],
+    satellite: Literal["A", "B", "C"] = "AC",
+    auxiliaries: Optional[List[str]] = None,
+    return_type: Literal["polars", "pandas"] = "polars",
+    clean_columns: bool = True,
+    add_magnetic: bool = True,
+) -> Union[pl.DataFrame, pd.DataFrame]:
+    """
+    Fetch Swarm FAC data from VirES server.
+
+    Parameters
+    ----------
+    start_time : str or datetime
+        Start time for data request.
+    end_time : str or datetime
+        End time for data request.
+    satellite : {"A", "B", "C"}, default "A"
+        Swarm satellite to fetch data for.
+    auxiliaries : list of str, optional
+        List of auxiliary variables to fetch (e.g., ['Kp', 'Dst', 'F107']).
+    return_type : {"polars", "pandas"}, default "polars"
+        The desired return DataFrame type.
+    clean_columns : bool, default True
+        If True, drops invalid measurements and standardizes column names.
+    add_magnetic : bool, default True
+        If True, computes and appends magnetic coordinates.
+
+    Returns
+    -------
+    pl.DataFrame or pd.DataFrame
+        The fetched data.
+    """
+    request = SwarmRequest()
+    request.set_collection(f"SW_OPER_FAC{satellite}TMS_2F")
+    
+    # Standard FAC variables
+    measurements = ["FAC", "Latitude", "Longitude", "Radius"]
+    request.set_products(measurements=measurements, auxiliaries=auxiliaries)
+    
+    data = request.get_between(start_time, end_time)
+    
+    # VirES returns an xarray Dataset by default via to_xarray()
+    ds = data.to_xarray()
+    
+    # Convert to Pandas then Polars for consistency with existing pipeline
+    df_pandas = ds.to_pandas()
+    if "Timestamp" not in df_pandas.columns and df_pandas.index.name == "Timestamp":
+        df_pandas = df_pandas.reset_index()
+        
+    df = pl.from_pandas(df_pandas)
+    
+    if clean_columns:
+        df = _clean_data(df)
+
+    if add_magnetic:
+        df = _add_magnetic_coords(df)
+
+    if return_type == "pandas":
+        return df.to_pandas()
+    
+    return df
+
+
+def export_fac(
+    df: Union[pl.DataFrame, pd.DataFrame],
+    file_path: Union[str, Path],
+    format: Literal["csv", "parquet", "nc", "json"] = "csv",
+) -> None:
+    """
+    Export FAC data to various formats.
+
+    Parameters
+    ----------
+    df : pl.DataFrame or pd.DataFrame
+        The DataFrame to export.
+    file_path : str or Path
+        Target file path.
+    format : {"csv", "parquet", "nc", "json"}, default "csv"
+        Format to export.
+    """
+    file_path = Path(file_path)
+    
+    # Ensure we are working with Polars for easy export logic if possible, 
+    # but handle both.
+    if isinstance(df, pd.DataFrame):
+        pl_df = pl.from_pandas(df)
+    else:
+        pl_df = df
+
+    if format == "csv":
+        pl_df.write_csv(file_path)
+    elif format == "parquet":
+        pl_df.write_parquet(file_path)
+    elif format == "json":
+        pl_df.write_json(file_path)
+    elif format == "nc":
+        # NetCDF requires xarray
+        if isinstance(df, pl.DataFrame):
+            ds = df.to_pandas().set_index("timestamp").to_xarray()
+        else:
+            ds = df.set_index("timestamp").to_xarray()
+        ds.to_netcdf(file_path)
+    else:
+        raise ValueError(f"Unsupported format: {format}")
 
 
 def _read_cdf(file_path: Path) -> pl.DataFrame:

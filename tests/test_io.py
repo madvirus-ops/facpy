@@ -6,7 +6,8 @@ import pandas as pd
 from pathlib import Path
 import datetime
 import numpy as np
-from facpy.io import load_swarm_fac, _read_cdf, _read_netcdf
+import tempfile
+from facpy.io import load_swarm_fac, _read_cdf, _read_netcdf, export_fac
 
 @pytest.fixture
 def mock_cdf():
@@ -111,3 +112,34 @@ def test_clean_data():
     assert cleaned.height == 1
     assert cleaned["latitude"][0] == 50.0
     # The second row should be filtered out because of Lat=91 and FAC=1e10
+
+
+def test_export_fac():
+    df = pl.DataFrame({
+        "timestamp": [datetime.datetime(2021, 1, 1)],
+        "latitude": [50.0],
+        "longitude": [10.0],
+        "radius": [6800.0],
+        "fac": [0.5]
+    })
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Test CSV
+        csv_path = Path(tmpdir) / "test.csv"
+        export_fac(df, csv_path, format="csv")
+        assert csv_path.exists()
+        
+        # Test Parquet
+        pq_path = Path(tmpdir) / "test.parquet"
+        export_fac(df, pq_path, format="parquet")
+        assert pq_path.exists()
+        
+        # Test JSON
+        json_path = Path(tmpdir) / "test.json"
+        export_fac(df, json_path, format="json")
+        assert json_path.exists()
+        
+        # Test NetCDF (optional if we don't want to depend on netCDF4 in tests, but it's in dependencies)
+        nc_path = Path(tmpdir) / "test.nc"
+        export_fac(df, nc_path, format="nc")
+        assert nc_path.exists()

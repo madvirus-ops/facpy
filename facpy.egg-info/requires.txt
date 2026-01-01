@@ -7,6 +7,8 @@ cdflib
 cartopy
 matplotlib
 scipy
+aacgmv2
+viresclient
 
 [dev]
 pytest

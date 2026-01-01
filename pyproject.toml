@@ -30,6 +30,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "aacgmv2",
+    "viresclient",
 ]
 
 [project.urls]

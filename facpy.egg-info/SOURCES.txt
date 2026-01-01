@@ -16,5 +16,7 @@ tests/test_geo.py
 tests/test_grid.py
 tests/test_ihfac.py
 tests/test_io.py
+tests/test_magnetic.py
 tests/test_plot.py
 tests/test_quiet.py
+tests/test_vires.py

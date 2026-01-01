@@ -1,8 +1,8 @@
 Metadata-Version: 2.4
 Name: facpy
-Version: 0.1.1
+Version: 0.1.3
 Summary: Field-Aligned Current Python toolkit for SWARM satellite analysis
-Author-email: Edwin Ayabie <edwinayabie@example.com>
+Author-email: Edwin Ayabie <edwin.beshel@ejust.edu.eg>
 Project-URL: Homepage, https://github.com/madvirus-ops/facpy
 Project-URL: Bug Tracker, https://github.com/madvirus-ops/facpy/issues
 Project-URL: Documentation, https://github.com/madvirus-ops/facpy#readme
@@ -22,6 +22,8 @@ Requires-Dist: cdflib
 Requires-Dist: cartopy
 Requires-Dist: matplotlib
 Requires-Dist: scipy
+Requires-Dist: aacgmv2
+Requires-Dist: viresclient
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"
@@ -31,7 +33,8 @@ Requires-Dist: mypy; extra == "dev"
 
 # facpy: Field-Aligned Current Python Toolkit
 
-[![PyPI version](https://badge.fury.io/py/facpy.svg)](https://badge.fury.io/py/facpy)
+[![PyPI version](https://badge.fury.io/py/facpy.svg)](https://pypi.org/project/facpy/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/facpy.svg)](https://pypi.org/project/facpy/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **facpy** is a research-grade Python package designed for standardized, fast, and reproducible analysis of Swarm satellite Field-Aligned Currents (FAC). It is optimized for quiet-time studies, regional analysis (e.g., Africa), and interhemispheric comparisons.
@@ -42,7 +45,8 @@ Requires-Dist: mypy; extra == "dev"
 *   **Quiet Time Selection**: Automatic selection of quietest days based on Kp (sum/max) or Dst (min) geomagnetic indices.
 *   **Geospacial Tools**:
     *   Region-based filtering (presets for Africa, Europe, Polar Caps, etc.).
-    *   Solar Local Time (SLT) calculation.
+    *   **Magnetic Local Time (MLT)** and Solar Local Time (SLT) calculation.
+    *   **Altitude-Adjusted Corrected Geomagnetic (AACGM)** coordinates (mlat, mlon).
     *   Hemisphere separation.
 *   **Gridding**: Fast aggregation of point data into regular 2D (Lat/Lon) or 3D (Lat/Lon/LT) grids using vectorization.
 *   **Interhemispheric Analysis (IHFAC)**: Tools to compare Northern and Southern hemisphere currents (Difference, Ratio) with automatic coordinate alignment.
@@ -91,10 +95,10 @@ quiet_dates = quiet.quiet_days(
 # Filter dataframe
 df = df.filter(pl.col("timestamp").dt.date().is_in(quiet_dates))
 
-# 3. Filter Region & Add Local Time
-# Focus on Africa and calculate Solar Local Time
+# 3. Filter Region & Add Magnetic Local Time
+# Focus on Africa and calculate Magnetic Local Time (MLT)
 df_africa = geo.filter_region(df, region="africa")
-df_africa = geo.add_local_time(df_africa)
+df_africa = geo.add_local_time(df_africa, method="mlt")
 
 # 4. Grid the Data
 # Create a 2°x2° grid of Mean FAC values
@@ -117,7 +121,7 @@ plot.fac_map(
 
 ### `facpy.io`
 Handles file I/O.
-*   `load_swarm_fac()`: Reads data, handles fill values, and normalizes column names.
+*   `load_swarm_fac()`: Reads data, handles fill values, normalizes column names, and **automatically appends magnetic coordinates (mlat, mlon, mlt)** using `aacgmv2`.
 
 ### `facpy.quiet`
 Geomagnetic activity selection.
@@ -126,7 +130,7 @@ Geomagnetic activity selection.
 ### `facpy.geo`
 Coordinate and spatial tools.
 *   `filter_region()`: Spatial subsetting.
-*   `add_local_time()`: Computes SLT from UTC and Longitude.
+*   `add_local_time()`: Computes SLT or **MLT** (using `aacgmv2`) from satellite coordinates and timestamp.
 
 ### `facpy.grid`
 Aggregation logic.
