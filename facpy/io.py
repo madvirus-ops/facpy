@@ -166,7 +166,11 @@ def fetch_swarm_fac(
         df = _add_magnetic_coords(df)
 
     if return_type == "pandas":
-        return df.to_pandas()
+        try:
+            return df.to_pandas()
+        except ImportError:
+            # Fallback if pyarrow is missing
+            return pd.DataFrame(df.to_dict(as_series=False))
     
     return df
 
@@ -200,15 +204,21 @@ def export_fac(
     if format == "csv":
         pl_df.write_csv(file_path)
     elif format == "parquet":
-        pl_df.write_parquet(file_path)
+        try:
+            import pyarrow
+            pl_df.write_parquet(file_path)
+        except ImportError:
+            raise ImportError("pyarrow is required for parquet export. Install it with: pip install pyarrow")
     elif format == "json":
         pl_df.write_json(file_path)
     elif format == "nc":
         # NetCDF requires xarray
-        if isinstance(df, pl.DataFrame):
-            ds = df.to_pandas().set_index("timestamp").to_xarray()
-        else:
-            ds = df.set_index("timestamp").to_xarray()
+        try:
+            pd_df = df.to_pandas()
+        except ImportError:
+            pd_df = pd.DataFrame(df.to_dict(as_series=False))
+        
+        ds = pd_df.set_index("timestamp").to_xarray()
         ds.to_netcdf(file_path)
     else:
         raise ValueError(f"Unsupported format: {format}")
