@@ -9,6 +9,7 @@ matplotlib
 scipy
 aacgmv2
 viresclient
+pyarrow
 
 [dev]
 pytest

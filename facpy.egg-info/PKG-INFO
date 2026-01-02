@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: facpy
-Version: 0.1.3
+Version: 0.1.4
 Summary: Field-Aligned Current Python toolkit for SWARM satellite analysis
 Author-email: Edwin Ayabie <edwin.beshel@ejust.edu.eg>
 Project-URL: Homepage, https://github.com/madvirus-ops/facpy
@@ -24,6 +24,7 @@ Requires-Dist: matplotlib
 Requires-Dist: scipy
 Requires-Dist: aacgmv2
 Requires-Dist: viresclient
+Requires-Dist: pyarrow
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"
@@ -41,7 +42,8 @@ Requires-Dist: mypy; extra == "dev"
 
 ## 🚀 Key Features
 
-*   **Data Loading**: Efficient loading of Swarm Level 2 FAC data (CDF and NetCDF formats) into Polars DataFrames.
+*   **Data Loading**: Efficient loading of Swarm Level 2 FAC data from local files (CDF/NetCDF) or **direct download from VirES** server.
+*   **Data Export**: Support for exporting processed data into multiple formats including **CSV, Parquet, NetCDF, and JSON**.
 *   **Quiet Time Selection**: Automatic selection of quietest days based on Kp (sum/max) or Dst (min) geomagnetic indices.
 *   **Geospacial Tools**:
     *   Region-based filtering (presets for Africa, Europe, Polar Caps, etc.).
@@ -78,9 +80,21 @@ import facpy
 from facpy import io, quiet, geo, grid, plot
 import polars as pl
 
-# 1. Load Data
+# 1a. Load Data from local files
 # Supports single file or list of files (CDF/NetCDF)
 df = io.load_swarm_fac("SW_OPER_FAC_A_20210101.cdf")
+
+# 1b. OR Fetch Data directly from VirES
+# Requires viresclient. Supports auxiliary variables (Kp, Dst, etc.)
+df = io.fetch_swarm_fac(
+    start_time="2021-01-01T00:00:00",
+    end_time="2021-01-01T01:00:00",
+    satellite="A",
+    auxiliaries=["Kp", "Dst"]
+)
+
+# 1c. Export data for use in other tools
+io.export_fac(df, "processed_data.parquet", format="parquet")
 
 # 2. Select Quiet Days
 # Get the 5 quietest days in Jan 2021 based on Kp index
@@ -121,7 +135,10 @@ plot.fac_map(
 
 ### `facpy.io`
 Handles file I/O.
-*   `load_swarm_fac()`: Reads data, handles fill values, normalizes column names, and **automatically appends magnetic coordinates (mlat, mlon, mlt)** using `aacgmv2`.
+*   `load_swarm_fac()`: Reads local CDF/NetCDF data.
+*   `fetch_swarm_fac()`: Fetches data directly from the VirES server. Supports requesting auxiliary variables like `Kp`, `Dst`, `AE`, and `F10.7`.
+*   `export_fac()`: Exports DataFrames to CSV, Parquet, JSON, or NetCDF formats.
+*   **Automatic processing**: Both loaders handle fill values, normalize names, and automatically append magnetic coordinates (mlat, mlon, mlt) using `aacgmv2`.
 
 ### `facpy.quiet`
 Geomagnetic activity selection.
